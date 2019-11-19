@@ -121,8 +121,8 @@ class RestProxyTest extends FreeSpec
       val msgs = (1 to msgCount).toList map { _: Int => Message(Random.alphanumeric.take(5).mkString, Random.alphanumeric.take(100).mkString) }
       val batches: Iterable[Records] = msgs.sliding(batchSize, batchSize).to(Iterable).map(Records(_))
 
-      // time for create and dispatch requests, receiving and decoding responses - 5317.291518ms - 100K msg, batchSize 100, par 8
-      // time for create and dispatch requests, receiving and decoding responses - 20486.01536ms - 1M msg, batchSize 1000, par 16
+      // produce 100000 messages, receiving and decoding responses - 5317.291518ms - batchSize 100, par 8
+      // produce 1000000 messages, receiving and decoding responses - 20486.01536ms - batchSize 1000, par 16
       val produceResponses: List[Response[Either[ResponseError[Error], ProduceResponse]]] = timed(s"produce $msgCount messages, receiving and decoding responses") {
 
         val sent: Iterable[Task[Response[Either[ResponseError[Error], ProduceResponse]]]] = batches map { b => reqBase.body(b).send() }
@@ -145,12 +145,9 @@ class RestProxyTest extends FreeSpec
       val msgs = (1 to msgCount).toList map { _: Int => Message(Random.alphanumeric.take(5).mkString, Random.alphanumeric.take(100).mkString) }
       val batches: Iterable[Records] = msgs.sliding(batchSize, batchSize).to(Iterable).map(Records(_))
 
-      // time for create and dispatch requests, receiving and decoding responses 3988.615484ms / 4669
+      // produce 100000 messages, receiving and decoding responses 3988.615484ms / 4669
       val produceResponses: List[Response[Either[ResponseError[Error], ProduceResponse]]] = timed(s"produce $msgCount messages, receiving and decoding responses") {
-
-        //val sent: Iterable[Task[Response[Either[ResponseError[Error], ProduceResponse]]]] = batches map { b => reqBase.body(b).send() }
-        val p: Observable[Response[Either[ResponseError[Error], ProduceResponse]]] = Observable.fromIterable(batches).mapParallelUnordered(parallelism) { b => reqBase.body(b).send()
-        }
+        val p: Observable[Response[Either[ResponseError[Error], ProduceResponse]]] = Observable.fromIterable(batches).mapParallelUnordered(parallelism) { b => reqBase.body(b).send() }
         p.toListL.runSyncUnsafe()
       }
 
